@@ -25,11 +25,11 @@ const pivotX = canvas.width / 2;
 const pivotY = canvas.height - 40;
 
 class Bubble {
-  constructor(x, y, mainBubble = false) {
+  constructor(x, y, color = null, mainBubble = false) {
     this.x = x;
     this.y = y;
     this.radius = 40;
-    this.color = colors[Math.floor(Math.random() * colors.length)]
+    this.color = color || colors[Math.floor(Math.random() * colors.length)]
     this.speedY = 0;
     this.speedX = 0;
     this.mainBubble = mainBubble
@@ -44,8 +44,8 @@ class Bubble {
     ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);    
     ctx.fillStyle = this.color;
     ctx.fill();
-    ctx.strokeStyle = 'black'
-    ctx.stroke()
+    // ctx.strokeStyle = 'black'
+    // ctx.stroke()
   }
 
   update() {
@@ -97,7 +97,7 @@ class Path {
 
 function getInitialBubblesRows() {
   for(let i = 0; i < row; i++) {
-    bubbles.unshift(new Bubble(80 * i + rowStart, rowHeight))
+    bubbles.push(new Bubble(80 * i + rowStart, rowHeight))
   }
   if(row === 9){
     row = 8
@@ -117,7 +117,6 @@ function getNewBubblesRow() {
   for(let i = 0; i < newRow; i++) {
     bubbles.push(new Bubble(80 * i + newRowStart, 40))
   }
-  bubbles.forEach(bubble => bubble.draw())
   if(newRow === 9){
     newRow = 8
     newRowStart = 80
@@ -127,10 +126,11 @@ function getNewBubblesRow() {
   }
 }
 
+function bubbleCollision(bubble1, bubble2) {  
+  return Math.sqrt(Math.abs(bubble1.y - bubble2.y)**2 + Math.abs(bubble1.x - bubble2.x)**2) <= 81
+}
 
-bubbles.forEach(bubble => bubble.draw())
-
-let bubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, true)
+let bubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, null, true)
 bubbleToShoot.update()
 
 const bubblePath = new Path((canvas.width / 2) - 1.5, canvas.height - 83, bubbleToShoot.color, pivotX, pivotY)
@@ -148,23 +148,38 @@ function animate() {
     if(bubble.y > canvas.height) bubbles = bubbles.filter(bubble => !bubble.isEliminated)
   })   
 
-  if(bubbleToShoot.y - 40 < 0) bubbleToShoot = newBubbleToShoot;
+  bubbles.filter(bubble => !bubble.eliminating).forEach(bubble => {
+    if(bubbleCollision(bubbleToShoot, bubble)) {
+      bubbleToShoot.speedX = 0
+      bubbleToShoot.speedY = 0
+      bubbles.push(new Bubble(bubbleToShoot.x, bubbleToShoot.y, bubbleToShoot.color))
+      bubbleToShoot = newBubbleToShoot;
+    }
+  })
+
+
+  if(bubbleToShoot.y <= 40) {
+    bubbleToShoot.y = 40
+    bubbleToShoot = newBubbleToShoot
+  } 
 
   requestAnimationFrame(animate)
 }
 
 animate()
+console.log(bubbles)
 
-newRowInterval = setInterval(() => {
-  ctx.fillStyle = 'grey';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);  
-  bubbleToShoot.update()
-  bubbles.forEach(bubble => {
-    bubble.y += 70
-    bubble.update()
-  })  
-  getNewBubblesRow()
-}, 25000)
+// newRowInterval = setInterval(() => {
+//   ctx.fillStyle = 'grey';
+//   ctx.fillRect(0, 0, canvas.width, canvas.height);  
+//   bubbleToShoot.update()
+//   bubbles.forEach(bubble => {
+//     bubble.y += 70
+//     bubble.update()
+//   })  
+//   getNewBubblesRow()
+//   console.log(bubbles)
+// }, 25000)
 
 
 window.addEventListener('keyup', ({ key }) => {
@@ -192,7 +207,7 @@ window.addEventListener('keydown', ({ key }) => {
     bubbleToShoot.active = true
     bubbleToShoot.speedY = -Math.cos(bubblePath.rotation) * 5
     bubbleToShoot.speedX = Math.sin(bubblePath.rotation) * 5
-    newBubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, true)
+    newBubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, null, true)
     bubblePath.color = newBubbleToShoot.color
   }
 })
