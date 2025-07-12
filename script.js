@@ -130,6 +130,42 @@ function bubbleCollision(bubble1, bubble2) {
   return Math.sqrt(Math.abs(bubble1.y - bubble2.y)**2 + Math.abs(bubble1.x - bubble2.x)**2) <= 81
 }
 
+
+function collectCluster(bubbles, startIdx) {
+  const start = bubbles[startIdx];
+  const cluster = [start];
+  const stack = [start];
+  const visited = new Set([start]);
+
+  while (stack.length) {
+    const current = stack.pop();
+    bubbles.forEach(next => {
+      if (
+        !visited.has(next) &&
+        next.color === start.color &&
+        bubbleCollision(current, next)
+      ) {
+        visited.add(next);
+        cluster.push(next);
+        stack.push(next);
+      }
+    });
+  }
+  return cluster;
+}
+
+function markElimination(bubble) {
+  bubble.eliminating = true;
+  bubble.speedY = -5 + bubble.y / 100;
+}
+
+function handleCollisions(bubbles, addedIdx) {
+  const cluster = collectCluster(bubbles, addedIdx);
+  if (cluster.length >= 3) {
+    cluster.forEach(markElimination);
+  }
+}
+
 let bubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, null, true)
 bubbleToShoot.update()
 
@@ -139,10 +175,10 @@ bubblePath.update()
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = 'grey';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);  
+  ctx.fillRect(0, 0, canvas.width, canvas.height);    
+  bubblePath.update()
   bubbleToShoot.update()
   if(newBubbleToShoot) newBubbleToShoot.update()
-  bubblePath.update()
   bubbles.forEach(bubble => {
     bubble.update()
     if(bubble.y > canvas.height) bubbles = bubbles.filter(bubble => !bubble.isEliminated)
@@ -150,16 +186,21 @@ function animate() {
 
   bubbles.filter(bubble => !bubble.eliminating).forEach(bubble => {
     if(bubbleCollision(bubbleToShoot, bubble)) {
+      const bubbleCollisioned = bubble
       bubbleToShoot.speedX = 0
       bubbleToShoot.speedY = 0
-      bubbles.push(new Bubble(bubbleToShoot.x, bubbleToShoot.y, bubbleToShoot.color))
-      bubbleToShoot = newBubbleToShoot;
+      const addedBubble = new Bubble(bubbleToShoot.x, bubbleToShoot.y, bubbleToShoot.color)
+      bubbles.push(addedBubble)
+      bubbleToShoot = newBubbleToShoot
+      const addedIdx = bubbles.length - 1;
+      handleCollisions(bubbles, addedIdx);
     }
   })
 
 
-  if(bubbleToShoot.y <= 40) {
-    bubbleToShoot.y = 40
+  if(bubbleToShoot.y <= 40) {    
+    const newBubble = new Bubble(bubbleToShoot.x, 40, bubbleToShoot.color)
+    bubbles.push(newBubble)
     bubbleToShoot = newBubbleToShoot
   } 
 
@@ -167,7 +208,6 @@ function animate() {
 }
 
 animate()
-console.log(bubbles)
 
 // newRowInterval = setInterval(() => {
 //   ctx.fillStyle = 'grey';
@@ -205,8 +245,8 @@ window.addEventListener('keydown', ({ key }) => {
 
   if(key === 'ArrowUp' && !bubbleToShoot.active) {
     bubbleToShoot.active = true
-    bubbleToShoot.speedY = -Math.cos(bubblePath.rotation) * 5
-    bubbleToShoot.speedX = Math.sin(bubblePath.rotation) * 5
+    bubbleToShoot.speedY = -Math.cos(bubblePath.rotation) * 10
+    bubbleToShoot.speedX = Math.sin(bubblePath.rotation) * 10
     newBubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, null, true)
     bubblePath.color = newBubbleToShoot.color
   }
