@@ -154,6 +154,26 @@ function collectCluster(bubbles, startIdx) {
   return cluster;
 }
 
+function collectDetachedCluster(bubbles) {
+  const cluster = bubbles.filter(bubble => bubble.y === 40);
+  const visited = new Set(cluster.slice());
+
+  while (cluster.length) {
+    const current = cluster.pop();
+    bubbles.forEach(next => {
+      if (
+        !visited.has(next) &&
+        bubbleCollision(current, next)
+      ) {
+        visited.add(next);
+        cluster.push(next);
+      }
+    });
+  }
+  return bubbles.filter(bubble => !visited.has(bubble));
+}
+
+
 function markElimination(bubble) {
   bubble.eliminating = true;
   bubble.speedY = -5 + bubble.y / 100;
@@ -164,6 +184,11 @@ function handleCollisions(bubbles, addedIdx) {
   if (cluster.length >= 3) {
     cluster.forEach(markElimination);
   }
+}
+
+function handleDetachedElimination(bubbles) {
+  const cluster = collectDetachedCluster(bubbles)
+  cluster.forEach(markElimination)
 }
 
 let bubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, null, true)
@@ -193,33 +218,34 @@ function animate() {
       bubbles.push(addedBubble)
       bubbleToShoot = newBubbleToShoot
       const addedIdx = bubbles.length - 1;
-      handleCollisions(bubbles, addedIdx);
-    }
-  })
-
+      handleCollisions(bubbles, addedIdx);   
+      handleDetachedElimination(bubbles.filter(bubble => !bubble.eliminating))   
+    }    
+  })  
+  
 
   if(bubbleToShoot.y <= 40) {    
     const newBubble = new Bubble(bubbleToShoot.x, 40, bubbleToShoot.color)
     bubbles.push(newBubble)
     bubbleToShoot = newBubbleToShoot
-  } 
+  }   
 
   requestAnimationFrame(animate)
 }
 
 animate()
 
-// newRowInterval = setInterval(() => {
-//   ctx.fillStyle = 'grey';
-//   ctx.fillRect(0, 0, canvas.width, canvas.height);  
-//   bubbleToShoot.update()
-//   bubbles.forEach(bubble => {
-//     bubble.y += 70
-//     bubble.update()
-//   })  
-//   getNewBubblesRow()
-//   console.log(bubbles)
-// }, 25000)
+
+newRowInterval = setInterval(() => {
+  ctx.fillStyle = 'grey';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);  
+  bubbleToShoot.update()
+  bubbles.forEach(bubble => {
+    bubble.y += 70
+    bubble.update()
+  })  
+  getNewBubblesRow()
+}, 30000)
 
 
 window.addEventListener('keyup', ({ key }) => {
@@ -248,7 +274,7 @@ window.addEventListener('keydown', ({ key }) => {
     bubbleToShoot.speedY = -Math.cos(bubblePath.rotation) * 10
     bubbleToShoot.speedX = Math.sin(bubblePath.rotation) * 10
     newBubbleToShoot = new Bubble(canvas.width / 2, canvas.height - 40, null, true)
-    bubblePath.color = newBubbleToShoot.color
+    bubblePath.color = newBubbleToShoot.color    
   }
 })
 
